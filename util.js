@@ -29,6 +29,7 @@ function buildVcard(profile = {}) {
   const whatsappNumber = internationalPhone(waMatch ? waMatch[1] : profile.whatsapp);
   if (phone) fields.push(`TEL;TYPE=WORK,VOICE:${phone}`);
   if (whatsappNumber && whatsappNumber !== phone) fields.push(`TEL;TYPE=CELL,VOICE:${whatsappNumber}`);
+  if (profile.email) fields.push(`EMAIL:${escape(profile.email)}`);
   if (profile.website) fields.push(`URL:${escape(profile.website)}`);
   if (profile.description) fields.push(`NOTE:${escape(profile.description)}`);
   fields.push('END:VCARD');

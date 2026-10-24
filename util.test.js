@@ -16,6 +16,7 @@ t('buildVcard escapes values and keeps Arabic UTF-8', () => {
   const card = u.buildVcard({
     name: 'مقهى, "الدار"',
     phone: '0612345678',
+    email: 'contact@example.ma',
     whatsapp: 'https://wa.me/212712345678',
     website: 'https://example.ma/a,b',
     description: 'قهوة; حلويات\\عائلية\nكل يوم'
@@ -24,6 +25,7 @@ t('buildVcard escapes values and keeps Arabic UTF-8', () => {
   a.match(card, /ORG:مقهى\\, "الدار"/);
   a.match(card, /TEL;TYPE=WORK,VOICE:\+212612345678/);
   a.match(card, /TEL;TYPE=CELL,VOICE:\+212712345678/);
+  a.match(card, /EMAIL:contact@example\.ma/);
   a.match(card, /URL:https:\/\/example\.ma\/a\\,b/);
   a.match(card, /NOTE:قهوة\\; حلويات\\\\عائلية\\nكل يوم/);
   a.ok(card.endsWith('END:VCARD\r\n'));

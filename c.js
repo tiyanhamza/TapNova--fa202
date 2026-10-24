@@ -1,4 +1,4 @@
-const { checkSession } = require('../../lib/util');
+const { checkSession, internationalPhone } = require('../../lib/util');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const I = {
   tel: 'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z',
@@ -25,19 +25,31 @@ exports.handler = async e => {
   if (!p) return nf();
   const color = /^#[0-9a-f]{6}$/i.test(p.color || '') ? p.color : '#1F5FFF';
   const soc = [['WhatsApp', p.whatsapp && 'https://wa.me/' + p.whatsapp, 'n-wa', 'W'], ['Instagram', p.instagram, 'n-ig', 'IG'], ['Facebook', p.facebook, 'n-fb', 'f'], ['TikTok', p.tiktok, 'n-tt', 'T']].filter(x => x[1]);
+  const ua = e.headers['user-agent'] || e.headers['User-Agent'] || '';
+  const inAppBrowser = /Instagram|FBAN|FBAV/i.test(ua);
+  const contactPath = `/c/${slug}/contact.vcf`;
+  const phone = internationalPhone(p.phone);
+  const addContactHref = /Android/i.test(ua)
+    ? (() => {
+        const headers = e.headers || {};
+        const host = (headers['x-forwarded-host'] || headers.host || headers.Host || '').split(',')[0].trim();
+        const protocol = (headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
+        const fallbackUrl = new URL(contactPath, `${protocol}://${host}`).href;
+        const encode = value => encodeURIComponent(value || '');
+        return `intent:#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.dir/contact;S.name=${encode(p.name)};S.phone=${encode(phone)};S.email=${encode(p.email)};S.company=${encode(p.name)};S.browser_fallback_url=${encode(fallbackUrl)};end`;
+      })()
+    : contactPath;
   const rows = [['Téléphone', p.phone, p.phone && 'tel:' + p.phone.replace(/[^\d+]/g, ''), 'tel'], ['E-mail', p.email, p.email && 'mailto:' + p.email, 'mail'],
     ['Adresse', p.address || (p.maps_url ? 'Ouvrir l’itinéraire' : ''), p.maps_url, 'pin'], ['Horaires', p.hours, '', 'time'],
     ['Site Internet', p.website && p.website.replace(/^https?:\/\//, '').replace(/\/$/, ''), p.website, 'web'], ...(p.links || []).map(l => ['Lien', l.title, l.url, 'web'])].filter(r => r[1]);
   const row = ([l, v, h, i]) => { const inner = `<span class="ic"><svg viewBox="0 0 24 24"><path d="${I[i]}"/></svg></span><div><small>${l}</small><b${i === 'time' ? ' style="white-space:pre-line"' : ''}>${esc(v)}</b></div>${h ? '<span class="go">↗</span>' : ''}`;
     return h ? `<a class="row" href="${esc(h)}" ${h.startsWith('http') ? 'target="_blank" rel="noopener"' : ''}>${inner}</a>` : `<div class="row">${inner}</div>`; };
-  const ua = e.headers['user-agent'] || e.headers['User-Agent'] || '';
-  const inAppBrowser = /Instagram|FBAN|FBAV/i.test(ua);
   const body = `${prev && !p.published ? '<p class="warn pv">Aperçu : ce profil n’est pas encore publié.</p>' : ''}
 <div class="cover">${p.cover_url ? `<img src="${esc(p.cover_url)}" alt="">` : ''}</div>
 <main class="pf"><div class="av${p.logo_url ? '' : ' ph'}">${p.logo_url ? `<img src="${esc(p.logo_url)}" alt="${esc(p.name)}">` : esc(p.name.charAt(0).toUpperCase())}</div>
 <h1>${esc(p.name)}</h1>${p.category ? `<div class="pill">${esc(p.category)}</div>` : ''}${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
 ${inAppBrowser ? `<aside class="warn" role="note"><p>افتح فـ Chrome/Safari باش تحفظ جهة الاتصال.</p><button class="sm s" id="copy-profile-link" type="button">نسخ الرابط</button><span id="copy-profile-status" class="small" role="status"></span></aside>` : ''}
-<a class="btn main" href="/c/${slug}/contact.vcf">Ajouter aux contacts</a>
+<a class="btn main" href="${esc(addContactHref)}">Ajouter aux contacts</a>
 ${soc.length ? `<div class="grid">${soc.map(([l, h, c, b]) => `<a class="btn ${c}" href="${esc(h)}" target="_blank" rel="noopener"><span class="b">${b}</span>${l}</a>`).join('')}</div>` : ''}
 ${rows.length ? `<section class="info"><h2>Informations</h2>${rows.map(row).join('')}</section>` : ''}
 <p class="muted small" style="margin-top:24px">Profil créé avec TapNova</p></main>`;

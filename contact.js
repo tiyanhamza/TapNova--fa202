@@ -9,7 +9,7 @@ exports.handler = async event => {
   const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) return response(503, 'Service non configuré.');
   try {
-    const result = await fetch(`${url}/rest/v1/profiles?slug=eq.${slug}&published=eq.true&active=eq.true&select=name,phone,whatsapp,website,description`, {
+    const result = await fetch(`${url}/rest/v1/profiles?slug=eq.${slug}&published=eq.true&active=eq.true&select=name,phone,whatsapp,website,description,email`, {
       headers: { apikey: key, Authorization: 'Bearer ' + key }
     });
     if (!result.ok) return response(502, 'Erreur temporaire.');
