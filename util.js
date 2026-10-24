@@ -9,6 +9,31 @@ function whatsapp(n) {
   if (d.startsWith('2120')) d = '212' + d.slice(4);
   return /^\d{8,15}$/.test(d) ? d : '';
 }
+function internationalPhone(n) {
+  let d = String(n || '').trim().replace(/[^\d+]/g, '');
+  if (!d) return '';
+  if (d.startsWith('00')) d = '+' + d.slice(2);
+  if (d.startsWith('+')) return /^\+\d{8,15}$/.test(d) ? d : '';
+  if (/^0[567]\d{8}$/.test(d)) return '+212' + d.slice(1);
+  if (/^2120[567]\d{8}$/.test(d)) return '+212' + d.slice(4);
+  if (/^212[567]\d{8}$/.test(d)) return '+' + d;
+  if (/^[567]\d{8}$/.test(d)) return '+212' + d;
+  return '';
+}
+function buildVcard(profile = {}) {
+  const escape = value => String(value || '').replace(/\\/g, '\\\\').replace(/\r\n|\r|\n/g, '\\n').replace(/([,;])/g, '\\$1');
+  const name = escape(profile.name);
+  const fields = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${name}`, `ORG:${name}`];
+  const phone = internationalPhone(profile.phone);
+  const waMatch = String(profile.whatsapp || '').match(/wa\.me\/(\+?\d+)/i);
+  const whatsappNumber = internationalPhone(waMatch ? waMatch[1] : profile.whatsapp);
+  if (phone) fields.push(`TEL;TYPE=WORK,VOICE:${phone}`);
+  if (whatsappNumber && whatsappNumber !== phone) fields.push(`TEL;TYPE=CELL,VOICE:${whatsappNumber}`);
+  if (profile.website) fields.push(`URL:${escape(profile.website)}`);
+  if (profile.description) fields.push(`NOTE:${escape(profile.description)}`);
+  fields.push('END:VCARD');
+  return fields.join('\r\n') + '\r\n';
+}
 function safeUrl(u) {
   u = String(u || '').trim();
   if (!u) return '';
@@ -51,4 +76,4 @@ function checkSession(tok, key) {
 }
 const h = x => crypto.createHash('sha256').update(String(x)).digest();
 const safeEq = (a, b) => crypto.timingSafeEqual(h(a), h(b));
-module.exports = { slugify, whatsapp, safeUrl, cleanProfile, makeSession, checkSession, safeEq };
+module.exports = { slugify, whatsapp, internationalPhone, buildVcard, safeUrl, cleanProfile, makeSession, checkSession, safeEq };

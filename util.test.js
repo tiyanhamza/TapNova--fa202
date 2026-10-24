@@ -5,6 +5,29 @@ t('whatsapp Maroc', () => {
   a.equal(u.whatsapp('+2120612345678'), '212612345678'); a.equal(u.whatsapp('00212712345678'), '212712345678');
   a.equal(u.whatsapp(''), ''); a.equal(u.whatsapp('abc'), '');
 });
+t('internationalPhone Maroc', () => {
+  a.equal(u.internationalPhone('0612345678'), '+212612345678');
+  a.equal(u.internationalPhone('0712345678'), '+212712345678');
+  a.equal(u.internationalPhone('+212 6 12 34 56 78'), '+212612345678');
+  a.equal(u.internationalPhone('00212712345678'), '+212712345678');
+  a.equal(u.internationalPhone('abc'), '');
+});
+t('buildVcard escapes values and keeps Arabic UTF-8', () => {
+  const card = u.buildVcard({
+    name: 'مقهى, "الدار"',
+    phone: '0612345678',
+    whatsapp: 'https://wa.me/212712345678',
+    website: 'https://example.ma/a,b',
+    description: 'قهوة; حلويات\\عائلية\nكل يوم'
+  });
+  a.match(card, /FN:مقهى\\, "الدار"/);
+  a.match(card, /ORG:مقهى\\, "الدار"/);
+  a.match(card, /TEL;TYPE=WORK,VOICE:\+212612345678/);
+  a.match(card, /TEL;TYPE=CELL,VOICE:\+212712345678/);
+  a.match(card, /URL:https:\/\/example\.ma\/a\\,b/);
+  a.match(card, /NOTE:قهوة\\; حلويات\\\\عائلية\\nكل يوم/);
+  a.ok(card.endsWith('END:VCARD\r\n'));
+});
 t('safeUrl', () => {
   a.equal(u.safeUrl('javascript:alert(1)'), ''); a.equal(u.safeUrl('instagram.com/x'), 'https://instagram.com/x'); a.equal(u.safeUrl('nope'), '');
 });

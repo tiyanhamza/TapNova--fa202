@@ -23,12 +23,6 @@ exports.handler = async e => {
     if (!r.ok) throw 0; p = (await r.json())[0];
   } catch { return page(502, 'Erreur', '<main class="card"><h1>Erreur temporaire</h1><p>Réessayez dans un instant.</p></main>'); }
   if (!p) return nf();
-  if (q.vcard) {
-    const v = s => String(s || '').replace(/[\\;,]/g, '\\$&').replace(/\n/g, '\\n');
-    const card = ['BEGIN:VCARD', 'VERSION:3.0', 'FN:' + v(p.name), 'ORG:' + v(p.name), p.category && 'TITLE:' + v(p.category), p.phone && 'TEL;TYPE=WORK,VOICE:' + v(p.phone),
-      p.email && 'EMAIL:' + v(p.email), p.website && 'URL:' + p.website, p.address && 'ADR;TYPE=WORK:;;' + v(p.address) + ';;;;', 'END:VCARD'].filter(Boolean).join('\r\n');
-    return { statusCode: 200, headers: { 'Content-Type': 'text/vcard; charset=utf-8', 'Content-Disposition': `attachment; filename="${slug}.vcf"`, 'Cache-Control': 'no-store' }, body: card };
-  }
   const color = /^#[0-9a-f]{6}$/i.test(p.color || '') ? p.color : '#1F5FFF';
   const soc = [['WhatsApp', p.whatsapp && 'https://wa.me/' + p.whatsapp, 'n-wa', 'W'], ['Instagram', p.instagram, 'n-ig', 'IG'], ['Facebook', p.facebook, 'n-fb', 'f'], ['TikTok', p.tiktok, 'n-tt', 'T']].filter(x => x[1]);
   const rows = [['Téléphone', p.phone, p.phone && 'tel:' + p.phone.replace(/[^\d+]/g, ''), 'tel'], ['E-mail', p.email, p.email && 'mailto:' + p.email, 'mail'],
@@ -36,13 +30,30 @@ exports.handler = async e => {
     ['Site Internet', p.website && p.website.replace(/^https?:\/\//, '').replace(/\/$/, ''), p.website, 'web'], ...(p.links || []).map(l => ['Lien', l.title, l.url, 'web'])].filter(r => r[1]);
   const row = ([l, v, h, i]) => { const inner = `<span class="ic"><svg viewBox="0 0 24 24"><path d="${I[i]}"/></svg></span><div><small>${l}</small><b${i === 'time' ? ' style="white-space:pre-line"' : ''}>${esc(v)}</b></div>${h ? '<span class="go">↗</span>' : ''}`;
     return h ? `<a class="row" href="${esc(h)}" ${h.startsWith('http') ? 'target="_blank" rel="noopener"' : ''}>${inner}</a>` : `<div class="row">${inner}</div>`; };
+  const ua = e.headers['user-agent'] || e.headers['User-Agent'] || '';
+  const inAppBrowser = /Instagram|FBAN|FBAV/i.test(ua);
   const body = `${prev && !p.published ? '<p class="warn pv">Aperçu : ce profil n’est pas encore publié.</p>' : ''}
 <div class="cover">${p.cover_url ? `<img src="${esc(p.cover_url)}" alt="">` : ''}</div>
 <main class="pf"><div class="av${p.logo_url ? '' : ' ph'}">${p.logo_url ? `<img src="${esc(p.logo_url)}" alt="${esc(p.name)}">` : esc(p.name.charAt(0).toUpperCase())}</div>
 <h1>${esc(p.name)}</h1>${p.category ? `<div class="pill">${esc(p.category)}</div>` : ''}${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
-<a class="btn main" href="/c/${slug}?vcard=1">Ajouter aux contacts</a>
+${inAppBrowser ? `<aside class="warn" role="note"><p>افتح فـ Chrome/Safari باش تحفظ جهة الاتصال.</p><button class="sm s" id="copy-profile-link" type="button">نسخ الرابط</button><span id="copy-profile-status" class="small" role="status"></span></aside>` : ''}
+<a class="btn main" href="/c/${slug}/contact.vcf">Ajouter aux contacts</a>
 ${soc.length ? `<div class="grid">${soc.map(([l, h, c, b]) => `<a class="btn ${c}" href="${esc(h)}" target="_blank" rel="noopener"><span class="b">${b}</span>${l}</a>`).join('')}</div>` : ''}
 ${rows.length ? `<section class="info"><h2>Informations</h2>${rows.map(row).join('')}</section>` : ''}
 <p class="muted small" style="margin-top:24px">Profil créé avec TapNova</p></main>`;
-  return page(200, p.name + ' · TapNova', body, prev ? 'no-store' : 'public, max-age=60', color);
+  const result = page(200, p.name + ' · TapNova', body, prev ? 'no-store' : 'public, max-age=60', color);
+  if (inAppBrowser) {
+    result.body = result.body.replace('</body>', `<script>
+document.getElementById('copy-profile-link').addEventListener('click', async () => {
+  const link = location.origin + '/c/${slug}';
+  try {
+    await navigator.clipboard.writeText(link);
+    document.getElementById('copy-profile-status').textContent = 'تم نسخ الرابط.';
+  } catch {
+    window.prompt('انسخ الرابط:', link);
+  }
+});
+</script></body>`);
+  }
+  return result;
 };

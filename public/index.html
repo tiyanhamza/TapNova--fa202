@@ -1,0 +1,17 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TapNova · NFC et QR Code pour commerces</title><meta name="description" content="Supports NFC, QR Codes et cartes de visite digitales pour les commerces au Maroc."><link rel="stylesheet" href="/style.css"></head><body>
+<header class="top"><strong>TapNova</strong><button class="s" id="lg"></button></header>
+<section class="hero"><h1 data-k="h"></h1><p class="muted" data-k="p"></p><a class="btn wa" id="c1" hidden data-k="c1"></a><a class="btn s" id="c2" hidden data-k="c2"></a></section>
+<section class="svc" id="sv"></section>
+<script>
+const T={fr:{h:"Votre commerce, à un tap de ses clients.",p:"Supports NFC, QR Codes, cartes de visite digitales et profils professionnels pour les commerces au Maroc.",c1:"Nous contacter sur WhatsApp",c2:"Demander une démonstration",lg:"العربية",
+s:[["Supports NFC","Plaques et cartes qui ouvrent votre profil d’un simple contact."],["QR Codes","Un code unique par commerce, prêt à imprimer."],["Cartes digitales","Vos coordonnées et réseaux, toujours à jour."],["Menus QR","Menu consultable sur le téléphone du client."],["Profils professionnels","Une page publique avec WhatsApp, itinéraire et réseaux."]],m:["Bonjour TapNova, je souhaite être contacté.","Bonjour TapNova, je souhaite une démonstration."]},
+ar:{h:"محلّك التجاري على بُعد لمسة من زبائنه.",p:"شارات NFC ورموز QR وبطاقات زيارة رقمية وملفات تعريفية مهنية للمحلات التجارية في المغرب.",c1:"تواصل معنا عبر واتساب",c2:"اطلب عرضاً تجريبياً",lg:"Français",
+s:[["شارات NFC","لوحات وبطاقات تفتح ملفك بلمسة واحدة."],["رموز QR","رمز فريد لكل محل، جاهز للطباعة."],["بطاقات رقمية","بياناتك وشبكاتك الاجتماعية محدّثة دائماً."],["قوائم QR","قائمة الطعام على هاتف الزبون."],["ملفات مهنية","صفحة عامة مع واتساب والاتجاهات والشبكات."]],m:["مرحباً TapNova، أرغب في التواصل معكم.","مرحباً TapNova، أرغب في عرض تجريبي."]}};
+let L='fr',W='';try{L=localStorage.getItem('tn_l')||'fr'}catch{}
+function r(){const t=T[L];document.documentElement.lang=L;document.documentElement.dir=L=='ar'?'rtl':'ltr';
+document.querySelectorAll('[data-k]').forEach(e=>e.textContent=t[e.dataset.k]);lg.textContent=t.lg;
+sv.innerHTML=t.s.map(s=>`<div><h2>${s[0]}</h2><p>${s[1]}</p></div>`).join('');
+[c1,c2].forEach((a,i)=>{a.hidden=!W;if(W){a.href='https://wa.me/'+W+'?text='+encodeURIComponent(t.m[i]);a.target='_blank';a.rel='noopener'}})}
+lg.onclick=()=>{L=L=='fr'?'ar':'fr';try{localStorage.setItem('tn_l',L)}catch{}r()};r();
+fetch('/api/admin',{method:'POST',body:JSON.stringify({action:'contact'})}).then(x=>x.json()).then(j=>{W=j.whatsapp||'';r()}).catch(()=>{});
+</script></body></html>

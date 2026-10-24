@@ -1,0 +1,64 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Admin · TapNova</title><link rel="stylesheet" href="/style.css"></head><body><main class="wrap">
+<h1>TapNova · Admin</h1><p id="msg" role="status"></p>
+<section id="lo" class="panel" hidden><form id="lf"><label>Clé administrateur<input id="key" type="password" autocomplete="current-password" required></label><button>Se connecter</button></form></section>
+<section id="ap" hidden>
+<button id="new">Ajouter un client</button><button class="s" id="out">Se déconnecter</button>
+<section id="fm" class="panel" hidden><form id="pf"><div id="fl"></div>
+<label>Logo ou photo du commerce<input type="file" id="file-logo" accept="image/jpeg,image/png,image/webp"></label><img id="pv-logo" class="prev" alt="" hidden><button type="button" class="s sm" id="rm-logo" hidden>Supprimer</button>
+<label>Image de couverture (bannière)<input type="file" id="file-cover" accept="image/jpeg,image/png,image/webp"></label><img id="pv-cover" class="prev" alt="" hidden><button type="button" class="s sm" id="rm-cover" hidden>Supprimer</button>
+<button>Enregistrer</button><button type="button" class="s" id="cx">Annuler</button></form></section>
+<label>Rechercher<input id="q" placeholder="Nom du client"></label>
+<label>Filtre<select id="ft"><option value="">Tous</option><option value="pub">Publiés</option><option value="draft">Brouillons</option><option value="off">Désactivés</option></select></label>
+<div id="ls"></div>
+<p class="muted small">Le lien d’un profil ne change jamais. Si vous modifiez un lien déjà imprimé ou programmé, régénérez et réimprimez le QR Code.</p>
+</section></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),F=[['name','Nom commercial *'],['description','Description','t'],['category','Activité (ex : Opticienne-Optométriste)'],['phone','Téléphone (06… ou +212…)'],['email','E-mail'],['whatsapp','WhatsApp (numéro ou lien wa.me)'],['instagram','Instagram (lien ou @nom)'],['facebook','Facebook (lien)'],['tiktok','TikTok (lien ou @nom)'],['address','Adresse'],['maps_url','Lien Google Maps'],['website','Site Internet'],['hours','Horaires (facultatif)','t'],['links','Autres liens (facultatif) : Titre|https://… un par ligne','t'],['color','Couleur du profil','c']];
+let items=[],cur=null;const IM={logo:{b:null,u:''},cover:{b:null,u:''}};
+$('#fl').innerHTML=F.map(([k,l,t])=>`<label>${l}${t=='t'?`<textarea name="${k}"></textarea>`:`<input ${t=='c'?'type="color" ':''}name="${k}">`}</label>`).join('');
+const msg=(t,ok)=>{$('#msg').textContent=t||'';$('#msg').className=ok?'ok':'err'};
+const show=v=>{$('#lo').hidden=v;$('#ap').hidden=!v;if(v)load()};
+async function api(action,d={}){let r;try{r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...d})})}catch{throw Error('Erreur réseau. Vérifiez votre connexion.')}
+const j=await r.json().catch(()=>({}));if(r.status===401&&action!=='login')show(false);if(!r.ok)throw Error(j.error||'Erreur serveur.');return j}
+const run=async(f,ok)=>{try{await f();if(ok)msg(ok,1)}catch(e){msg(e.message)}};
+async function load(){await run(async()=>{items=(await api('list')).items;draw()})}
+const url=p=>location.origin+'/c/'+p.slug;
+function draw(){const q=$('#q').value.toLowerCase(),f=$('#ft').value;
+const l=items.filter(p=>p.name.toLowerCase().includes(q)&&(!f||(f=='pub'?p.published&&p.active:f=='draft'?!p.published:!p.active)));
+$('#ls').innerHTML=l.length?l.map(p=>`<div class="it"><strong>${esc(p.name)}</strong><br><span class="muted small">${esc(url(p))}</span><br>
+<span class="tag">${p.published?'Publié':'Brouillon'}</span><span class="tag">${p.active?'Actif':'Désactivé'}</span><br>
+<button class="sm s" data-a="edit" data-id="${p.id}">Modifier</button><a class="btn s sm" style="display:inline-block;width:auto" href="/c/${p.slug}?preview=1" target="_blank">Aperçu</a>
+<button class="sm s" data-a="pub" data-id="${p.id}">${p.published?'Dépublier':'Publier'}</button><button class="sm s" data-a="act" data-id="${p.id}">${p.active?'Désactiver':'Activer'}</button>
+${p.published&&p.active?`<button class="sm" data-a="copy" data-id="${p.id}">Copier le lien</button><button class="sm" data-a="qr" data-id="${p.id}">QR Code PNG</button>`:''}
+<button class="sm d" data-a="del" data-id="${p.id}">Supprimer</button></div>`).join(''):'<p class="muted">Aucun client. Ajoutez-en un avec le bouton ci-dessus.</p>'}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function qr(p){const q=qrcode(0,'M');q.addData(url(p));q.make();const n=q.getModuleCount(),s=10,m=4,c=document.createElement('canvas');c.width=c.height=(n+2*m)*s;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#000';for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+m)*s,(r+m)*s,s,s);const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='qr-'+p.slug+'.png';a.click()}
+$('#ls').onclick=e=>{const b=e.target.closest('button');if(!b)return;const p=items.find(x=>x.id==b.dataset.id),a=b.dataset.a;
+if(a=='edit')form(p);
+if(a=='pub')run(async()=>{await api('toggle',{id:p.id,field:'published',value:!p.published});await load()},p.published?'Profil dépublié.':'Profil publié.');
+if(a=='act')run(async()=>{await api('toggle',{id:p.id,field:'active',value:!p.active});await load()},p.active?'Profil désactivé.':'Profil activé.');
+if(a=='copy')navigator.clipboard.writeText(url(p)).then(()=>msg('Lien copié.',1),()=>prompt('Copiez ce lien :',url(p)));
+if(a=='qr')qr(p);
+if(a=='del'&&confirm('Supprimer définitivement « '+p.name+' » ? Son QR Code ne fonctionnera plus.'))run(async()=>{await api('delete',{id:p.id});await load()},'Profil supprimé.')};
+function form(p){cur=p;IM.logo={b:null,u:p?p.logo_url||'':''};IM.cover={b:null,u:p?p.cover_url||'':''};$('#fm').hidden=false;$('#pf').reset();
+F.forEach(([k])=>{let v=p?(k=='links'?(p.links||[]).map(l=>l.title+'|'+l.url).join('\n'):p[k]):'';if(k=='color')v=v||'#1F5FFF';$('#pf').elements[k].value=v||''});pvw('logo',IM.logo.u);pvw('cover',IM.cover.u);$('#fm').scrollIntoView()}
+const pvw=(k,u)=>{$('#pv-'+k).hidden=$('#rm-'+k).hidden=!u;if(u)$('#pv-'+k).src=u};
+async function shrink(f,m){const bm=await createImageBitmap(f),s=Math.min(1,m/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=Math.round(bm.width*s);c.height=Math.round(bm.height*s);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(bm,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.82))}
+async function upload(b){const s=await api('sign'),fd=new FormData();fd.append('file',b);fd.append('api_key',s.key);fd.append('timestamp',s.ts);fd.append('folder',s.folder);fd.append('signature',s.sig);
+try{const r=await fetch(`https://api.cloudinary.com/v1_1/${s.cloud}/image/upload`,{method:'POST',body:fd}),j=await r.json();if(!r.ok||!j.secure_url)throw 0;return j.secure_url}catch{throw Error("Échec du téléversement de l'image.")}}
+['logo','cover'].forEach(k=>{
+$('#file-'+k).onchange=async e=>{const f=e.target.files[0];if(!f)return;
+if(!['image/jpeg','image/png','image/webp'].includes(f.type))return msg('Format non accepté : utilisez JPG, PNG ou WebP.');
+if(f.size>10e6)return msg('Image trop lourde (10 Mo maximum).');
+try{IM[k].b=await shrink(f,k=='cover'?1400:800);pvw(k,URL.createObjectURL(IM[k].b));msg('')}catch{msg('Image illisible.')}};
+$('#rm-'+k).onclick=()=>{IM[k]={b:null,u:''};$('#file-'+k).value='';pvw(k,'')}});
+$('#pf').onsubmit=e=>{e.preventDefault();run(async()=>{
+for(const k of ['logo','cover'])if(IM[k].b){IM[k].u=await upload(IM[k].b);IM[k].b=null}
+const pr={id:cur&&cur.id,logo_url:IM.logo.u,cover_url:IM.cover.u};F.forEach(([k])=>pr[k]=$('#pf').elements[k].value);
+await api('save',{profile:pr});$('#fm').hidden=true;await load()},'Profil enregistré.')};
+$('#cx').onclick=()=>$('#fm').hidden=true;$('#new').onclick=()=>form(null);$('#q').oninput=$('#ft').onchange=draw;
+$('#lf').onsubmit=e=>{e.preventDefault();run(async()=>{await api('login',{key:$('#key').value});$('#key').value='';show(true)},'Connexion réussie.')};
+$('#out').onclick=()=>run(async()=>{await api('logout');show(false)},'Déconnecté.');
+api('me').then(()=>show(true),()=>show(false));
+</script></body></html>

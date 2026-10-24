@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { safeEq, makeSession, checkSession, cleanProfile, slugify, whatsapp } = require('../../lib/util');
+const { safeEq, makeSession, checkSession, cleanProfile, slugify, whatsapp, buildVcard } = require('../../lib/util');
 const tries = new Map(); // limitation best-effort par instance serveur
 const env = k => process.env[k] || '';
 const J = (s, o, h = {}) => ({ statusCode: s, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...h }, body: JSON.stringify(o) });
@@ -29,6 +29,7 @@ exports.handler = async e => {
   if (a === 'logout') return J(200, { ok: true }, { 'Set-Cookie': `tn_s=; ${ck}; Max-Age=0` });
   if (!checkSession((String(e.headers.cookie || '').match(/(?:^|;\s*)tn_s=([^;]+)/) || [])[1], sk())) return J(401, { error: 'Session expirée. Reconnectez-vous.' });
   if (a === 'me') return J(200, { ok: true });
+  if (a === 'vcard') return J(200, { vcard: buildVcard(b.profile || {}) });
   if (a === 'sign') {
     if (!env('CLOUDINARY_CLOUD_NAME') || !env('CLOUDINARY_API_KEY') || !env('CLOUDINARY_API_SECRET')) return J(503, { error: "Stockage d'images non configuré (Cloudinary)." });
     const ts = Math.floor(Date.now() / 1000);

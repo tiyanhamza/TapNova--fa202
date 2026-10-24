@@ -30,16 +30,21 @@ $('#ls').innerHTML=l.length?l.map(p=>`<div class="it"><strong>${esc(p.name)}</st
 <span class="tag">${p.published?'Publié':'Brouillon'}</span><span class="tag">${p.active?'Actif':'Désactivé'}</span><br>
 <button class="sm s" data-a="edit" data-id="${p.id}">Modifier</button><a class="btn s sm" style="display:inline-block;width:auto" href="/c/${p.slug}?preview=1" target="_blank">Aperçu</a>
 <button class="sm s" data-a="pub" data-id="${p.id}">${p.published?'Dépublier':'Publier'}</button><button class="sm s" data-a="act" data-id="${p.id}">${p.active?'Désactiver':'Activer'}</button>
-${p.published&&p.active?`<button class="sm" data-a="copy" data-id="${p.id}">Copier le lien</button><button class="sm" data-a="qr" data-id="${p.id}">QR Code PNG</button>`:''}
+<button class="sm" data-a="qr-vcard" data-id="${p.id}">QR vCard</button><button class="sm s" data-a="copy-vcard" data-id="${p.id}">Copier vCard</button>
+${p.published&&p.active?`<button class="sm s" data-a="copy" data-id="${p.id}">Copier le lien</button><button class="sm" data-a="qr" data-id="${p.id}">QR du lien</button>`:''}
 <button class="sm d" data-a="del" data-id="${p.id}">Supprimer</button></div>`).join(''):'<p class="muted">Aucun client. Ajoutez-en un avec le bouton ci-dessus.</p>'}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function qr(p){const q=qrcode(0,'M');q.addData(url(p));q.make();const n=q.getModuleCount(),s=10,m=4,c=document.createElement('canvas');c.width=c.height=(n+2*m)*s;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#000';for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+m)*s,(r+m)*s,s,s);const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='qr-'+p.slug+'.png';a.click()}
+qrcode.stringToBytes=qrcode.stringToBytesFuncs['UTF-8'];
+function qr(text,name){const q=qrcode(0,'M');q.addData(text);q.make();const n=q.getModuleCount(),s=10,m=4,c=document.createElement('canvas');c.width=c.height=(n+2*m)*s;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#000';for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+m)*s,(r+m)*s,s,s);const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download=name;a.click()}
+const getVcard=async p=>(await api('vcard',{profile:p})).vcard;
 $('#ls').onclick=e=>{const b=e.target.closest('button');if(!b)return;const p=items.find(x=>x.id==b.dataset.id),a=b.dataset.a;
 if(a=='edit')form(p);
 if(a=='pub')run(async()=>{await api('toggle',{id:p.id,field:'published',value:!p.published});await load()},p.published?'Profil dépublié.':'Profil publié.');
 if(a=='act')run(async()=>{await api('toggle',{id:p.id,field:'active',value:!p.active});await load()},p.active?'Profil désactivé.':'Profil activé.');
 if(a=='copy')navigator.clipboard.writeText(url(p)).then(()=>msg('Lien copié.',1),()=>prompt('Copiez ce lien :',url(p)));
-if(a=='qr')qr(p);
+if(a=='qr')run(async()=>qr(url(p),'qr-'+p.slug+'.png'));
+if(a=='qr-vcard')run(async()=>qr(await getVcard(p),'vcard-'+p.slug+'.png'));
+if(a=='copy-vcard')run(async()=>{const card=await getVcard(p);try{await navigator.clipboard.writeText(card)}catch{window.prompt('Copiez la vCard :',card)}},'vCard copiée.');
 if(a=='del'&&confirm('Supprimer définitivement « '+p.name+' » ? Son QR Code ne fonctionnera plus.'))run(async()=>{await api('delete',{id:p.id});await load()},'Profil supprimé.')};
 function form(p){cur=p;IM.logo={b:null,u:p?p.logo_url||'':''};IM.cover={b:null,u:p?p.cover_url||'':''};$('#fm').hidden=false;$('#pf').reset();
 F.forEach(([k])=>{let v=p?(k=='links'?(p.links||[]).map(l=>l.title+'|'+l.url).join('\n'):p[k]):'';if(k=='color')v=v||'#1F5FFF';$('#pf').elements[k].value=v||''});pvw('logo',IM.logo.u);pvw('cover',IM.cover.u);$('#fm').scrollIntoView()}

@@ -15,6 +15,10 @@
 [functions]
   included_files = ["lib/**"]
 [[redirects]]
+  from = "/c/:slug/contact.vcf"
+  to = "/.netlify/functions/contact?slug=:slug"
+  status = 200
+[[redirects]]
   from = "/c/*"
   to = "/.netlify/functions/c"
   status = 200
